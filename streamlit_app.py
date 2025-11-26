@@ -31,7 +31,7 @@ if "code" in st.query_params:
     st.experimental_rerun()
 
 # Databricks endpoint
-DATABRICKS_API_URL = "https://<your-databricks-workspace>/serving-endpoints/<your-endpoint>/invocations"
+DATABRICKS_API_URL = "https://dbc-beada314-1494.cloud.databricks.com/serving-endpoints/agents_sandbox_shared-distribution-reddy_bot/invocations"
 
 # Initialize chat history
 if "messages" not in st.session_state:
@@ -43,7 +43,7 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # Chat input
-if prompt := st.chat_input("What is up?"):
+if prompt := st.chat_input("How can I help?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
