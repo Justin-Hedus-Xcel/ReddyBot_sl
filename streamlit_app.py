@@ -61,19 +61,37 @@ if prompt := st.chat_input("How can I help?"):
     }
 
     # Stream response
-    with st.chat_message("assistant"):
-        placeholder = st.empty()
-        bot_reply = ""
-        try:
-            with requests.post(DATABRICKS_API_URL, json=payload, headers=headers, stream=True) as r:
-                r.raise_for_status()
-                for chunk in r.iter_content(chunk_size=None):
-                    if chunk:
-                        decoded = chunk.decode("utf-8")
-                        bot_reply += decoded
-                        placeholder.markdown(bot_reply)
-        except Exception as e:
-            bot_reply = f"Error: {e}"
-            placeholder.markdown(bot_reply)
+    
+with st.chat_message("assistant"):
+    placeholder = st.empty()
+    bot_reply = ""
 
-    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+    try:
+        with requests.post(DATABRICKS_API_URL, json=payload, headers=headers, stream=True) as r:
+            r.raise_for_status()
+
+            for line in r.iter_lines():
+                if not line:
+                    continue
+
+                try:
+                    data = json.loads(line.decode("utf-8"))
+                except:
+                    continue
+
+                # Databricks agent output is in `content`
+                if "content" in data:
+                    for c in data["content"]:
+                        if "text" in c:
+                            bot_reply += c["text"]
+                            placeholder.markdown(bot_reply)
+
+    except Exception as e:
+        bot_reply = f"Error: {e}"
+        placeholder.markdown(bot_reply)
+
+# Store clean assistant reply
+st.session_state.messages.append({
+    "role": "assistant",
+    "content": bot_reply
+})
