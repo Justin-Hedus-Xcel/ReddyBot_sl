@@ -62,35 +62,47 @@ if prompt := st.chat_input("How can I help?"):
 
     # Stream response
     
+
 with st.chat_message("assistant"):
     placeholder = st.empty()
     bot_reply = ""
+    buffer = ""
 
     try:
         with requests.post(DATABRICKS_API_URL, json=payload, headers=headers, stream=True) as r:
             r.raise_for_status()
 
-            for line in r.iter_lines():
-                if not line:
+            for chunk in r.iter_content(chunk_size=1024):
+                if not chunk:
                     continue
 
-                try:
-                    data = json.loads(line.decode("utf-8"))
-                except:
-                    continue
+                buffer += chunk.decode("utf-8")
 
-                # Databricks agent output is in `content`
-                if "content" in data:
-                    for c in data["content"]:
-                        if "text" in c:
-                            bot_reply += c["text"]
-                            placeholder.markdown(bot_reply)
+                # Parse any valid JSON objects from the buffer
+                while True:
+                    buffer = buffer.lstrip()
+
+                    if not buffer.startswith("{"):
+                        break
+
+                    try:
+                        obj, idx = json.JSONDecoder().raw_decode(buffer)
+                        buffer = buffer[idx:]
+                    except Exception:
+                        break  # Wait for more data
+
+                    # Extract assistant text
+                    if "content" in obj:
+                        for c in obj["content"]:
+                            if "text" in c:
+                                bot_reply += c["text"]
+                                placeholder.markdown(bot_reply)
 
     except Exception as e:
         bot_reply = f"Error: {e}"
         placeholder.markdown(bot_reply)
 
-# Store clean assistant reply
+# Save clean output
 st.session_state.messages.append({
     "role": "assistant",
     "content": bot_reply
